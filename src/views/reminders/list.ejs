@@ -1,0 +1,29 @@
+<%- include('../partials/head', {title: 'Pengingat'}) %>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1>Pengingat</h1>
+  <a href="/reminders/new" class="btn btn-success">+ Tambah</a>
+</div>
+<div class="mb-3">
+  <a href="/reminders?status=pending" class="btn btn-sm btn-outline-secondary <%= filter==='pending' ? 'active' : '' %>">Belum selesai</a>
+  <a href="/reminders?status=done" class="btn btn-sm btn-outline-secondary <%= filter==='done' ? 'active' : '' %>">Selesai</a>
+  <a href="/reminders?status=all" class="btn btn-sm btn-outline-secondary <%= filter==='all' ? 'active' : '' %>">Semua</a>
+</div>
+<ul class="list-group">
+  <% reminders.forEach(r => { %>
+    <li class="list-group-item d-flex justify-content-between align-items-center <%= r.is_done ? 'text-muted text-decoration-line-through' : '' %>">
+      <span><%= r.title %> <small class="text-muted">(<%= r.label %>)</small> — <%= r.due_date %><%= r.repeat_interval_days ? ' (ulang tiap ' + r.repeat_interval_days + ' hari)' : '' %></span>
+      <span>
+        <% if (!r.is_done) { %>
+        <form method="POST" action="/reminders/<%= r.id %>/done?_method=PUT" class="d-inline">
+          <button class="btn btn-sm btn-outline-success">Selesai</button>
+        </form>
+        <% } %>
+        <form method="POST" action="/reminders/<%= r.id %>?_method=DELETE" class="d-inline" onsubmit="return confirm('Hapus?');">
+          <button class="btn btn-sm btn-outline-danger">Hapus</button>
+        </form>
+      </span>
+    </li>
+  <% }) %>
+  <% if (reminders.length === 0) { %><li class="list-group-item text-muted">Tidak ada data.</li><% } %>
+</ul>
+<%- include('../partials/foot') %>

@@ -1,0 +1,124 @@
+<%- include('../partials/head', {title: plant.name}) %>
+<div class="d-flex justify-content-between align-items-start mb-3">
+  <div>
+    <h1><%= plant.name %> <span class="badge bg-<%= plant.status==='tumbuh' ? 'success': (plant.status==='panen' ? 'primary' : 'secondary') %>"><%= plant.status %></span></h1>
+    <p class="text-muted mb-0"><%= plant.variety || '-' %> · <%= plant.quantity || '-' %> · tanam <%= plant.planting_date || '-' %></p>
+    <% if (plant.notes) { %><p><%= plant.notes %></p><% } %>
+  </div>
+  <div>
+    <a href="/kebun/<%= plant.id %>/edit" class="btn btn-outline-primary">Edit</a>
+    <form method="POST" action="/kebun/<%= plant.id %>?_method=DELETE" class="d-inline" onsubmit="return confirm('Hapus tanaman ini beserta semua datanya?');">
+      <button class="btn btn-outline-danger">Hapus</button>
+    </form>
+  </div>
+</div>
+
+<ul class="nav nav-tabs mb-3">
+  <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#logs">Log Harian</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#reminders">Jadwal (Pupuk/Panen)</button></li>
+  <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#finance">Keuangan</button></li>
+</ul>
+
+<div class="tab-content">
+  <div class="tab-pane fade show active" id="logs">
+    <form method="POST" action="/kebun/<%= plant.id %>/logs" class="row g-2 mb-3 bg-white p-3 rounded shadow-sm">
+      <div class="col-md-2"><input type="date" name="log_date" class="form-control" required value="<%= new Date().toISOString().slice(0,10) %>"></div>
+      <div class="col-md-2">
+        <select name="type" class="form-select" required>
+          <option value="siram">Siram</option>
+          <option value="pupuk">Pupuk</option>
+          <option value="panen">Panen</option>
+          <option value="hama">Hama/Penyakit</option>
+          <option value="lainnya">Lainnya</option>
+        </select>
+      </div>
+      <div class="col-md-2"><input type="number" step="any" name="quantity" class="form-control" placeholder="Jumlah"></div>
+      <div class="col-md-2"><input type="text" name="unit" class="form-control" placeholder="Satuan (kg/gram)"></div>
+      <div class="col-md-3"><input type="text" name="description" class="form-control" placeholder="Keterangan"></div>
+      <div class="col-md-1"><button class="btn btn-success w-100">+</button></div>
+    </form>
+    <table class="table table-sm bg-white">
+      <thead><tr><th>Tanggal</th><th>Tipe</th><th>Jumlah</th><th>Keterangan</th><th></th></tr></thead>
+      <tbody>
+      <% logs.forEach(l => { %>
+        <tr>
+          <td><%= l.log_date %></td>
+          <td><%= l.type %></td>
+          <td><%= l.quantity != null ? l.quantity + ' ' + (l.unit||'') : '-' %></td>
+          <td><%= l.description || '-' %></td>
+          <td>
+            <form method="POST" action="/kebun/<%= plant.id %>/logs/<%= l.id %>?_method=DELETE" onsubmit="return confirm('Hapus log ini?');">
+              <button class="btn btn-sm btn-outline-danger">Hapus</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (logs.length === 0) { %><tr><td colspan="5" class="text-center text-muted">Belum ada log.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="tab-pane fade" id="reminders">
+    <form method="POST" action="/kebun/<%= plant.id %>/reminders" class="row g-2 mb-3 bg-white p-3 rounded shadow-sm">
+      <div class="col-md-4"><input type="text" name="title" class="form-control" placeholder="misal: Pemupukan, Panen" required></div>
+      <div class="col-md-3"><input type="date" name="due_date" class="form-control" required></div>
+      <div class="col-md-3"><input type="number" name="repeat_interval_days" class="form-control" placeholder="Ulangi tiap N hari (opsional)"></div>
+      <div class="col-md-2"><button class="btn btn-success w-100">+ Tambah</button></div>
+    </form>
+    <ul class="list-group">
+      <% reminders.forEach(r => { %>
+        <li class="list-group-item d-flex justify-content-between align-items-center <%= r.is_done ? 'text-muted text-decoration-line-through' : '' %>">
+          <span><%= r.title %> — <%= r.due_date %><%= r.repeat_interval_days ? ' (ulang tiap ' + r.repeat_interval_days + ' hari)' : '' %></span>
+          <span>
+            <% if (!r.is_done) { %>
+            <form method="POST" action="/kebun/<%= plant.id %>/reminders/<%= r.id %>/done?_method=PUT" class="d-inline">
+              <button class="btn btn-sm btn-outline-success">Selesai</button>
+            </form>
+            <% } %>
+            <form method="POST" action="/kebun/<%= plant.id %>/reminders/<%= r.id %>?_method=DELETE" class="d-inline" onsubmit="return confirm('Hapus?');">
+              <button class="btn btn-sm btn-outline-danger">Hapus</button>
+            </form>
+          </span>
+        </li>
+      <% }) %>
+      <% if (reminders.length === 0) { %><li class="list-group-item text-muted">Belum ada jadwal.</li><% } %>
+    </ul>
+  </div>
+
+  <div class="tab-pane fade" id="finance">
+    <form method="POST" action="/kebun/<%= plant.id %>/finance" class="row g-2 mb-3 bg-white p-3 rounded shadow-sm">
+      <div class="col-md-2"><input type="date" name="trans_date" class="form-control" required value="<%= new Date().toISOString().slice(0,10) %>"></div>
+      <div class="col-md-2">
+        <select name="type" class="form-select" required>
+          <option value="pengeluaran">Pengeluaran</option>
+          <option value="pemasukan">Pemasukan</option>
+        </select>
+      </div>
+      <div class="col-md-2"><input type="text" name="category" class="form-control" placeholder="Kategori"></div>
+      <div class="col-md-2"><input type="number" name="amount" class="form-control" placeholder="Jumlah (Rp)" required></div>
+      <div class="col-md-3"><input type="text" name="notes" class="form-control" placeholder="Catatan"></div>
+      <div class="col-md-1"><button class="btn btn-success w-100">+</button></div>
+    </form>
+    <table class="table table-sm bg-white">
+      <thead><tr><th>Tanggal</th><th>Tipe</th><th>Kategori</th><th>Jumlah</th><th>Catatan</th><th></th></tr></thead>
+      <tbody>
+      <% finance.forEach(f => { %>
+        <tr>
+          <td><%= f.trans_date %></td>
+          <td><span class="badge bg-<%= f.type === 'pemasukan' ? 'success' : 'danger' %>"><%= f.type %></span></td>
+          <td><%= f.category || '-' %></td>
+          <td><%= formatCurrency(f.amount) %></td>
+          <td><%= f.notes || '-' %></td>
+          <td>
+            <form method="POST" action="/kebun/<%= plant.id %>/finance/<%= f.id %>?_method=DELETE" onsubmit="return confirm('Hapus?');">
+              <button class="btn btn-sm btn-outline-danger">Hapus</button>
+            </form>
+          </td>
+        </tr>
+      <% }) %>
+      <% if (finance.length === 0) { %><tr><td colspan="6" class="text-center text-muted">Belum ada transaksi.</td></tr><% } %>
+      </tbody>
+    </table>
+  </div>
+</div>
+<%- include('../partials/foot') %>

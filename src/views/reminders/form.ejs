@@ -1,0 +1,29 @@
+<%- include('../partials/head', {title: 'Tambah Pengingat'}) %>
+<h1 class="mb-4">Tambah Pengingat</h1>
+<form method="POST" action="/reminders" class="bg-white p-4 rounded shadow-sm">
+  <div class="mb-3">
+    <label class="form-label">Terkait dengan (opsional)</label>
+    <select name="ref_select" class="form-select" onchange="
+      const [type, id] = this.value.split(':');
+      document.getElementById('ref_type').value = type || '';
+      document.getElementById('ref_id').value = id || '';
+    ">
+      <option value=":">Umum (tidak terkait)</option>
+      <optgroup label="Ternak">
+        <% animals.forEach(a => { %><option value="animal:<%= a.id %>">🐔 <%= a.name %> (<%= a.category %>)</option><% }) %>
+      </optgroup>
+      <optgroup label="Kebun">
+        <% plants.forEach(p => { %><option value="plant:<%= p.id %>">🌱 <%= p.name %></option><% }) %>
+      </optgroup>
+    </select>
+    <input type="hidden" name="ref_type" id="ref_type">
+    <input type="hidden" name="ref_id" id="ref_id">
+  </div>
+  <div class="mb-3"><label class="form-label">Judul</label><input type="text" name="title" class="form-control" required placeholder="misal: Beri vaksin, Pemupukan"></div>
+  <div class="mb-3"><label class="form-label">Tanggal jatuh tempo</label><input type="date" name="due_date" class="form-control" required></div>
+  <div class="mb-3"><label class="form-label">Ulangi tiap (hari, opsional)</label><input type="number" name="repeat_interval_days" class="form-control"></div>
+  <div class="mb-3"><label class="form-label">Catatan</label><textarea name="notes" class="form-control" rows="2"></textarea></div>
+  <button class="btn btn-success" type="submit">Simpan</button>
+  <a href="/reminders" class="btn btn-outline-secondary">Batal</a>
+</form>
+<%- include('../partials/foot') %>

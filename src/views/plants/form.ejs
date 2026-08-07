@@ -1,0 +1,20 @@
+<%- include('../partials/head', {title: plant ? 'Edit Tanaman' : 'Tambah Tanaman'}) %>
+<h1 class="mb-4"><%= plant ? 'Edit Tanaman' : 'Tambah Tanaman' %></h1>
+<form method="POST" action="<%= plant ? '/kebun/' + plant.id + '?_method=PUT' : '/kebun' %>" class="bg-white p-4 rounded shadow-sm">
+  <div class="mb-3"><label class="form-label">Nama tanaman</label><input type="text" name="name" class="form-control" required value="<%= plant ? plant.name : '' %>" placeholder="misal: Cabai, Bayam"></div>
+  <div class="mb-3"><label class="form-label">Varietas</label><input type="text" name="variety" class="form-control" value="<%= plant ? (plant.variety || '') : '' %>"></div>
+  <div class="mb-3"><label class="form-label">Jumlah/Luas</label><input type="text" name="quantity" class="form-control" value="<%= plant ? (plant.quantity || '') : '' %>" placeholder="misal: 20 polybag / 10 m2"></div>
+  <div class="mb-3"><label class="form-label">Tanggal tanam</label><input type="date" name="planting_date" class="form-control" value="<%= plant ? (plant.planting_date || '') : '' %>"></div>
+  <div class="mb-3">
+    <label class="form-label">Status</label>
+    <select name="status" class="form-select">
+      <% ['tumbuh','panen','gagal'].forEach(s => { %>
+        <option value="<%= s %>" <%= plant && plant.status === s ? 'selected' : '' %>><%= s %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="mb-3"><label class="form-label">Catatan</label><textarea name="notes" class="form-control" rows="3"><%= plant ? (plant.notes || '') : '' %></textarea></div>
+  <button class="btn btn-success" type="submit">Simpan</button>
+  <a href="/kebun" class="btn btn-outline-secondary">Batal</a>
+</form>
+<%- include('../partials/foot') %>

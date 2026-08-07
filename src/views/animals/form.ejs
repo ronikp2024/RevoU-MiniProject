@@ -1,0 +1,42 @@
+<%- include('../partials/head', {title: animal ? 'Edit Ternak' : 'Tambah Ternak'}) %>
+<h1 class="mb-4"><%= animal ? 'Edit Ternak' : 'Tambah Ternak' %></h1>
+<form method="POST" action="<%= animal ? '/ternak/' + animal.id + '?_method=PUT' : '/ternak' %>" class="bg-white p-4 rounded shadow-sm">
+  <div class="mb-3">
+    <label class="form-label">Kategori</label>
+    <select name="category" class="form-select" required>
+      <option value="ayam" <%= (animal ? animal.category : defaultCategory) === 'ayam' ? 'selected' : '' %>>Ayam</option>
+      <option value="ikan" <%= (animal ? animal.category : defaultCategory) === 'ikan' ? 'selected' : '' %>>Ikan</option>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Nama/Label kelompok</label>
+    <input type="text" name="name" class="form-control" required value="<%= animal ? animal.name : '' %>" placeholder="misal: Kandang A, Kolam 1">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Jenis/Ras</label>
+    <input type="text" name="breed" class="form-control" value="<%= animal ? (animal.breed || '') : '' %>" placeholder="misal: Ayam kampung, Lele">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Jumlah</label>
+    <input type="number" name="quantity" class="form-control" min="0" value="<%= animal ? animal.quantity : 0 %>">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Tanggal mulai</label>
+    <input type="date" name="start_date" class="form-control" value="<%= animal ? (animal.start_date || '') : '' %>">
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Status</label>
+    <select name="status" class="form-select">
+      <% ['aktif','dijual','mati','selesai'].forEach(s => { %>
+        <option value="<%= s %>" <%= animal && animal.status === s ? 'selected' : '' %>><%= s %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="mb-3">
+    <label class="form-label">Catatan</label>
+    <textarea name="notes" class="form-control" rows="3"><%= animal ? (animal.notes || '') : '' %></textarea>
+  </div>
+  <button class="btn btn-success" type="submit">Simpan</button>
+  <a href="/ternak" class="btn btn-outline-secondary">Batal</a>
+</form>
+<%- include('../partials/foot') %>

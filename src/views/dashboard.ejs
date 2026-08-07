@@ -1,0 +1,72 @@
+<%- include('partials/head', {title: 'Dashboard'}) %>
+<h1 class="mb-4">Dashboard</h1>
+<div class="row g-3 mb-4">
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <div class="fs-2">🐔</div>
+      <div class="fs-4 fw-bold"><%= counts.ayam %></div>
+      <div class="text-muted">Ekor ayam aktif</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <div class="fs-2">🐟</div>
+      <div class="fs-4 fw-bold"><%= counts.ikan %></div>
+      <div class="text-muted">Ekor ikan aktif</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <div class="fs-2">🌱</div>
+      <div class="fs-4 fw-bold"><%= counts.kebun %></div>
+      <div class="text-muted">Tanaman sedang tumbuh</div>
+    </div></div>
+  </div>
+  <div class="col-md-3">
+    <div class="card text-center"><div class="card-body">
+      <div class="fs-2">💰</div>
+      <div class="fs-6 fw-bold text-success">+<%= formatCurrency(finance.income) %></div>
+      <div class="fs-6 fw-bold text-danger">-<%= formatCurrency(finance.expense) %></div>
+      <div class="text-muted">Bulan ini</div>
+    </div></div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <span>Pengingat terdekat</span>
+        <a href="/reminders" class="btn btn-sm btn-outline-success">Lihat semua</a>
+      </div>
+      <ul class="list-group list-group-flush">
+        <% if (upcomingReminders.length === 0) { %>
+          <li class="list-group-item text-muted">Tidak ada pengingat aktif.</li>
+        <% } %>
+        <% upcomingReminders.forEach(r => { %>
+          <li class="list-group-item d-flex justify-content-between">
+            <span><%= r.title %> <small class="text-muted">(<%= r.label %>)</small></span>
+            <span class="badge bg-secondary"><%= r.due_date %></span>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card">
+      <div class="card-header">Siklus bertelur & mengeram aktif</div>
+      <ul class="list-group list-group-flush">
+        <% if (activeBreeding.length === 0) { %>
+          <li class="list-group-item text-muted">Tidak ada siklus aktif.</li>
+        <% } %>
+        <% activeBreeding.forEach(b => { %>
+          <li class="list-group-item d-flex justify-content-between">
+            <span><%= b.animal_name %> <small class="text-muted"><%= b.status %></small></span>
+            <span class="badge bg-warning text-dark"><%= b.eggs_count || 0 %> telur</span>
+          </li>
+        <% }) %>
+      </ul>
+    </div>
+  </div>
+</div>
+<%- include('partials/foot') %>

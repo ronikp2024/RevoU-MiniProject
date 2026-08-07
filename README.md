@@ -23,6 +23,48 @@ Untuk pengembangan dengan auto-restart saat file berubah:
 npm run dev
 ```
 
+## Deploy di PC Windows
+
+### Cara cepat: `start.bat`
+
+Double-click `start.bat` di folder project. Script ini otomatis `npm install` (kalau `node_modules` belum ada) lalu menjalankan server di `http://localhost:3000`.
+
+Supaya otomatis jalan tiap kali Windows nyala:
+1. Klik kanan `start.bat` → **Create shortcut**
+2. Tekan `Win + R`, ketik `shell:startup`, Enter — ini membuka folder Startup
+3. Pindahkan shortcut tadi ke folder Startup itu
+
+Diakses dari HP di WiFi yang sama: cek IP PC dengan `ipconfig` (lihat `IPv4 Address`), lalu buka `http://<IP-PC>:3000` dari HP. Kalau tidak nyambung, izinkan Node.js lewat **Windows Defender Firewall**.
+
+### Cara lebih tangguh: PM2 (auto-restart kalau crash, jalan di background)
+
+[PM2](https://pm2.keymetrics.io/) menjaga aplikasi tetap jalan, restart otomatis kalau error, dan bisa auto-start saat Windows boot.
+
+```powershell
+# 1. Install PM2 dan modul startup-nya (sekali saja)
+npm install -g pm2
+npm install -g pm2-windows-startup
+pm2-startup install
+
+# 2. Masuk ke folder project, lalu jalankan aplikasi lewat PM2
+cd C:\path\ke\RevoU-MiniProject
+npm install
+pm2 start server.js --name farm-manager
+
+# 3. Simpan daftar proses supaya otomatis jalan lagi setelah restart PC
+pm2 save
+```
+
+Perintah PM2 yang berguna sehari-hari:
+
+```powershell
+pm2 list                 # lihat status aplikasi
+pm2 logs farm-manager    # lihat log/error
+pm2 restart farm-manager # restart manual
+pm2 stop farm-manager    # hentikan
+pm2 delete farm-manager  # hapus dari daftar PM2
+```
+
 ## Fitur Tahap 1
 
 - **Ternak (Ayam & Ikan)** — catat kelompok/kandang/kolam: jenis, jumlah, tanggal mulai, status.

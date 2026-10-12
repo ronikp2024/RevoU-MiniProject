@@ -100,3 +100,7 @@ Tahap berikutnya yang bisa ditambahkan:
 - Manajemen stok pakan/pupuk terpisah dengan pengurangan otomatis saat log dicatat
 - Versi mobile (PWA) agar gampang dipakai langsung di kandang/kebun
 - Deploy ke server/cloud agar bisa diakses dari mana saja
+
+## Monitor Induk Mengerami
+
+Halaman mandiri untuk memantau induk yang sedang mengerami telur: `public/mengerami/index.html` (dibuka di `http://localhost:3000/mengerami/` saat server jalan, atau langsung buka file-nya di browser). Data tersimpan di browser (localStorage), tanpa database.

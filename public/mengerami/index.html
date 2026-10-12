@@ -123,12 +123,46 @@
       </div>
     </section>
   </div>
+
+  <!-- Backup Google Drive -->
+  <section class="card" id="drive">
+    <h2>☁️ Backup Google Drive</h2>
+    <div class="muted" id="d-status"></div>
+    <div id="d-setup">
+      <label>Google Client ID</label>
+      <input id="d-client" placeholder="xxxx.apps.googleusercontent.com" autocomplete="off">
+      <p><button id="d-connect">Hubungkan Google Drive</button></p>
+      <details>
+        <summary class="muted">Cara mendapatkan Client ID (sekali saja)</summary>
+        <ol class="muted">
+          <li>Buka <b>console.cloud.google.com</b>, buat project baru.</li>
+          <li><b>APIs &amp; Services → Library</b>, cari <b>Google Drive API</b>, klik <b>Enable</b>.</li>
+          <li><b>OAuth consent screen</b> → pilih <b>External</b> → isi nama app dan email. Di bagian <b>Test users</b>, tambahkan email Gmail Anda.</li>
+          <li><b>Credentials → Create credentials → OAuth client ID → Web application</b>. Di <b>Authorized JavaScript origins</b> isi: <code id="d-origin"></code></li>
+          <li>Salin <b>Client ID</b>-nya, tempel di atas.</li>
+        </ol>
+      </details>
+    </div>
+    <div id="d-actions" class="row" hidden>
+      <button id="d-now">Backup sekarang</button>
+      <button class="ghost" id="d-restore">Pulihkan dari Drive</button>
+      <button class="ghost" id="d-off">Putuskan</button>
+    </div>
+  </section>
 </main>
 
 <script>
 const KEY = 'monitor-mengerami-v1';
 const DAY = 86400000;
 const $ = s => document.querySelector(s);
+// ===== Backup Google Drive (file hanya bisa diakses aplikasi ini: scope drive.file) =====
+const DKEY = 'monitor-mengerami-drive';
+const DSCOPE = 'https://www.googleapis.com/auth/drive.file';
+const DFILE = 'Backup Monitor Induk Mengerami.json';
+let dcfg = (() => { try { return JSON.parse(localStorage.getItem(DKEY)) || {}; } catch { return {}; } })();
+let dtoken = null, dexp = 0, dtimer = null, dbusy = false;
+const saveD = () => { try { localStorage.setItem(DKEY, JSON.stringify(dcfg)); } catch {} };
+
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
 let db = load();          // { items: [induk...], cur: id induk terpilih }
 let st = null;            // induk terpilih
@@ -142,7 +176,10 @@ function load() {
   } catch {}
   return { items: [], cur: null };
 }
-function save() { try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {} }
+function save() {
+  try { localStorage.setItem(KEY, JSON.stringify(db)); } catch {}
+  if (dcfg.enabled) { clearTimeout(dtimer); dtimer = setTimeout(() => backupNow(false), 4000); }
+}
 
 const pad = n => String(n).padStart(2, '0');
 const ymd = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -165,6 +202,8 @@ function milestones(total) {
 function init() {
   $('#s-start').value = ymd(new Date());
   render();
+  renderDrive();
+  if (dcfg.enabled && dcfg.pending) document.addEventListener('click', () => backupNow(true), { once: true });
 }
 
 function dayNoOf(i) { return Math.floor((dateOnly(ymd(new Date())) - dateOnly(i.start)) / DAY) + 1; }
@@ -319,6 +358,131 @@ $('#a-reset').onclick = () => {
   db.items = db.items.filter(i => i.id !== st.id); db.cur = null;
   save(); render();
 };
+
+// ----- Google Drive -----
+function dstatus(msg, kind) { const e = $('#d-status'); e.textContent = msg; e.className = kind === 'bad' ? 'alert' : kind === 'ok' ? 'alert ok' : 'muted'; }
+
+function loadGIS() {
+  return new Promise((res, rej) => {
+    if (window.google && google.accounts && google.accounts.oauth2) return res();
+    const sc = document.createElement('script');
+    sc.src = 'https://accounts.google.com/gsi/client';
+    sc.onload = () => res();
+    sc.onerror = () => rej(new Error('tidak bisa memuat Google, cek internet'));
+    document.head.append(sc);
+  });
+}
+
+// interactive=true boleh membuka popup izin; false hanya mencoba diam-diam
+function getToken(interactive) {
+  if (dtoken && Date.now() < dexp - 60000) return Promise.resolve(dtoken);
+  return loadGIS().then(() => new Promise((res, rej) => {
+    google.accounts.oauth2.initTokenClient({
+      client_id: dcfg.clientId, scope: DSCOPE,
+      callback: r => {
+        if (r.error) return rej(new Error(r.error));
+        dtoken = r.access_token; dexp = Date.now() + (r.expires_in || 3600) * 1000; res(dtoken);
+      },
+      error_callback: e => rej(new Error((e && e.type) || 'popup_failed')),
+    }).requestAccessToken({ prompt: interactive ? '' : 'none' });
+  }));
+}
+
+async function gfetch(url, opts = {}) {
+  const r = await fetch(url, { ...opts, headers: { ...(opts.headers || {}), Authorization: 'Bearer ' + dtoken } });
+  if (r.status === 401) dtoken = null;
+  if (!r.ok) { const e = new Error('Drive HTTP ' + r.status); e.status = r.status; throw e; }
+  return r;
+}
+
+async function findFile() {
+  const q = encodeURIComponent(`name='${DFILE}' and trashed=false`);
+  const r = await gfetch(`https://www.googleapis.com/drive/v3/files?q=${q}&orderBy=${encodeURIComponent('modifiedTime desc')}&fields=files(id,modifiedTime)`);
+  return ((await r.json()).files || [])[0] || null;
+}
+
+async function uploadFile(payload) {
+  const send = id => {
+    const b = 'bkp' + uid();
+    const meta = id ? {} : { name: DFILE, mimeType: 'application/json' };
+    const body = `--${b}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(meta)}\r\n--${b}\r\nContent-Type: application/json\r\n\r\n${payload}\r\n--${b}--`;
+    const base = 'https://www.googleapis.com/upload/drive/v3/files';
+    return gfetch(`${base}${id ? '/' + id : ''}?uploadType=multipart&fields=id,modifiedTime`,
+      { method: id ? 'PATCH' : 'POST', headers: { 'Content-Type': 'multipart/related; boundary=' + b }, body });
+  };
+  try { return (await send(dcfg.fileId)).json(); }
+  catch (e) { if (e.status === 404 && dcfg.fileId) { dcfg.fileId = null; return (await send(null)).json(); } throw e; }
+}
+
+async function backupNow(interactive) {
+  if (!dcfg.enabled || dbusy) return;
+  if (!db.items.length) { if (interactive) dstatus('Belum ada data induk untuk di-backup.'); return; }  // jangan timpa backup dengan data kosong
+  dbusy = true;
+  try {
+    await getToken(interactive);
+    const f = await uploadFile(JSON.stringify({ app: 'monitor-mengerami', savedAt: new Date().toISOString(), db }));
+    dcfg.fileId = f.id; dcfg.last = f.modifiedTime || new Date().toISOString(); dcfg.pending = false; saveD();
+    dstatus('Backup terakhir: ' + fmtTime(dcfg.last), 'ok');
+  } catch (e) {
+    dcfg.pending = true; saveD();
+    dstatus(`Backup tertunda (${e.message}). Ketuk "Backup sekarang" atau ketuk layar sekali lagi.`, 'bad');
+    if (e.message !== 'popup_closed') document.addEventListener('click', () => backupNow(true), { once: true });
+  } finally { dbusy = false; }
+}
+
+async function restoreFrom(id) {
+  await getToken(true);
+  const j = await (await gfetch(`https://www.googleapis.com/drive/v3/files/${id}?alt=media`)).json();
+  if (!j || !j.db || !Array.isArray(j.db.items)) throw new Error('format backup tidak dikenali');
+  if (!confirm(`Ganti semua data di HP ini dengan backup Drive (${j.db.items.length} induk, disimpan ${fmtTime(j.savedAt)})?`)) return false;
+  db = j.db; adding = false; save(); clearTimeout(dtimer); render();
+  return true;
+}
+
+function renderDrive() {
+  $('#d-setup').hidden = !!dcfg.enabled;
+  $('#d-actions').hidden = !dcfg.enabled;
+  $('#d-client').value = dcfg.clientId || '';
+  $('#d-origin').textContent = location.origin.startsWith('http') ? location.origin : '(buka lewat alamat https://, bukan file lokal)';
+  if (!dcfg.enabled) dstatus('Belum tersambung. Catatan hanya ada di HP ini.');
+  else if (dcfg.pending) dstatus('Ada perubahan yang belum ter-backup. Ketuk "Backup sekarang".', 'bad');
+  else dstatus(dcfg.last ? 'Backup otomatis aktif. Terakhir: ' + fmtTime(dcfg.last) : 'Tersambung.', 'ok');
+}
+
+$('#d-connect').onclick = async () => {
+  const id = $('#d-client').value.trim();
+  if (!/\.apps\.googleusercontent\.com$/.test(id)) return alert('Client ID tidak valid. Harus berakhiran .apps.googleusercontent.com');
+  dcfg.clientId = id; saveD();
+  try {
+    dstatus('Menghubungkan…');
+    await getToken(true);
+    const f = await findFile();
+    dcfg.enabled = true;
+    if (f) {
+      dcfg.fileId = f.id; saveD();
+      const ok = confirm(`Sudah ada backup di Drive (${fmtTime(f.modifiedTime)}).\n\nOK = ambil data dari Drive${db.items.length ? ' (data di HP ini diganti)' : ''}.\nBatal = pakai data HP ini dan timpa backup Drive.`);
+      if (ok && await restoreFrom(f.id)) return renderDrive();
+    }
+    saveD();
+    await backupNow(false);
+  } catch (e) { dcfg.enabled = false; saveD(); dstatus('Gagal menghubungkan: ' + e.message, 'bad'); return; }
+  renderDrive();
+};
+$('#d-now').onclick = () => backupNow(true);
+$('#d-restore').onclick = async () => {
+  try {
+    await getToken(true);
+    const f = dcfg.fileId ? { id: dcfg.fileId } : await findFile();
+    if (!f) return alert('Belum ada backup di Drive.');
+    await restoreFrom(f.id);
+  } catch (e) { dstatus('Gagal memulihkan: ' + e.message, 'bad'); }
+};
+$('#d-off').onclick = () => {
+  if (!confirm('Putuskan Google Drive? File backup di Drive tidak dihapus.')) return;
+  try { if (dtoken) google.accounts.oauth2.revoke(dtoken); } catch {}
+  dtoken = null; dcfg = { clientId: dcfg.clientId }; saveD(); renderDrive();
+};
+
 
 init();
 </script>

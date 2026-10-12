@@ -103,4 +103,4 @@ Tahap berikutnya yang bisa ditambahkan:
 
 ## Monitor Induk Mengerami
 
-Halaman mandiri untuk memantau induk yang sedang mengerami telur: `public/mengerami/index.html` (dibuka di `http://localhost:3000/mengerami/` saat server jalan, atau langsung buka file-nya di browser). Data tersimpan di browser (localStorage), tanpa database.
+Halaman mandiri untuk memantau satu atau banyak induk yang sedang mengerami telur: `public/mengerami/index.html` (dibuka di `http://localhost:3000/mengerami/` saat server jalan, atau langsung buka file-nya di browser). Data tersimpan di browser (localStorage), tanpa database.
